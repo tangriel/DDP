@@ -1,0 +1,101 @@
+ShinyApp Pitch for "MTCARS"
+========================================================
+author: Hanna Kaplun using `r sprintf("%s and knitr version %s", 
+  R.version.string, packageVersion("knitr"))`
+date: `r format(Sys.time(), "%B %d, %Y")`
+transition: rotate
+incremental: true
+
+Features
+========================================================
+
+Users can input the following characteristics of a Car: 
+
+- Number of Cylinders (4-8)
+- Displacement (50-600 cu.in.)
+- Horse Power (50-350)
+- Rear Axle Ratio (2-5)
+- Weight (1-6 Mega lbs)
+- Quarter Mile time (10-30 secs)
+- Engine Type (V/S)
+- Transmission Type (0-1 / Automatic-Manual)
+- Number of Gears (3-5)
+- Number of Carburators (1-8)
+
+
+Structure of the MTcars Dataset Used
+========================================================
+
+```{r, echo=TRUE, eval=TRUE}
+data("mtcars")
+str(mtcars)
+```
+
+ui.R
+========================================================
+```{r, echo=TRUE}
+library(shiny)
+library(ggplot2)
+
+dataset <- mtcars
+
+shinyUI(pageWithSidebar(
+
+     headerPanel("Cars Plotting"),
+
+     sidebarPanel(
+
+          sliderInput('sampleSize', 'Sample Size', min=10, max=nrow(dataset),
+                      value=min(10, nrow(dataset)), step=5, round=0),
+
+          selectInput('x', 'X', names(dataset)),
+          selectInput('y', 'Y', names(dataset), names(dataset)[[2]]),
+          selectInput('color', 'Color', c('None', names(dataset))),
+
+          # checkboxInput('jitter', 'Jitter'),
+          checkboxInput('smooth', 'Smooth'),
+
+          selectInput('facet_row', 'Facet Row', c(None='.', names(dataset))),
+          selectInput('facet_col', 'Facet Column', c(None='.', names(dataset)))
+     ),
+
+     mainPanel(
+          plotOutput('plot')
+     )
+))
+```
+
+server.R
+========================================================
+
+```{r}
+library(shiny)
+library(ggplot2)
+
+shinyServer(function(input, output) {
+
+     dataset <- reactive( {
+          mtcars[sample(nrow(mtcars), input$sampleSize),]
+     })
+
+     output$plot <- reactivePlot(function() {
+
+          p <- ggplot(dataset(), aes_string(x=input$x, y=input$y)) + geom_point()
+
+          if (input$color != 'None')
+               p <- p + aes_string(color=input$color)
+
+          facets <- paste(input$facet_row, '~', input$facet_col)
+          if (facets != '. ~ .')
+               p <- p + facet_grid(facets)
+
+          if (input$smooth)
+               p <- p + geom_smooth()
+
+          print(p)
+
+     }, height=600
+     )
+
+})
+```
